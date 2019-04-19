@@ -51,6 +51,35 @@ class PropertyContract : Contract {
                         inputProperty == outputProperty.copy(owners = inputProperty.owners))
                 "There should be at least one buyer." using (outputProperty.owners.isNotEmpty())
             }
+
+
+            is Commands.Rent -> requireThat {
+                "Only one input state should be consumed." using (inputs.size == 1)
+                "Only one output state should be produced." using (outputs.size == 1)
+
+                val inputProperty = inputs.single()
+                val outputProperty = outputs.single()
+
+                "One or more tenants should be added." using (inputProperty.tenants.size < outputProperty.tenants.size)
+                "Only the tenants number should change." using (
+
+                    inputProperty == outputProperty.copy(tenants = inputProperty.tenants)
+                )
+            }
+
+            is Commands.CancelRent -> requireThat {
+                "Only one input state should be consumed." using (inputs.size == 1)
+                "Only one output state should be produced." using (outputs.size == 1)
+
+                val inputProperty = inputs.single()
+                val outputProperty = outputs.single()
+
+                "One or more tenants should be deleted." using (inputProperty.tenants.size > outputProperty.tenants.size)
+                "Only the tenants number should change." using (
+
+                        outputProperty == inputProperty.copy(tenants = outputProperty.tenants)
+                        )
+            }
         }
     }
 }
