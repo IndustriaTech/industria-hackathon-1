@@ -1,13 +1,11 @@
 package com.template
 
 import com.template.flows.CreatePropertyFlowInitiator
-import com.template.flows.CreatePropertyFlowResponder
 import com.template.flows.SellPropertyFlowInitiator
 import com.template.states.PropertyState
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.Party
 import net.corda.core.node.services.queryBy
-import net.corda.core.transactions.SignedTransaction
 import net.corda.testing.internal.chooseIdentity
 import net.corda.testing.node.MockNetwork
 import net.corda.testing.node.MockNetworkParameters
@@ -24,10 +22,6 @@ class FlowTests {
     )))
     private val nodeA = network.createNode()
     private val nodeB = network.createNode()
-
-    init {
-        nodeA.registerInitiatedFlow(CreatePropertyFlowResponder::class.java)
-    }
 
 
     private fun createProperty(): List<PropertyState> {
@@ -87,7 +81,10 @@ class FlowTests {
         nodeA.transaction {
             val propertyStatesAndRef = nodeA.services.vaultService.queryBy<PropertyState>().states
 
-            assertEquals(2, propertyStatesAndRef.size)
+            assertEquals(1, propertyStatesAndRef.size)
+            val state = propertyStatesAndRef.single().state.data
+
+            assertEquals(state.owners, nodeB.info.legalIdentities)
         }
     }
 }

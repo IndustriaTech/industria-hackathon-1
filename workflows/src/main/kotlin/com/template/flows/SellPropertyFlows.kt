@@ -5,6 +5,7 @@ import com.template.contracts.PropertyContract
 import com.template.states.PropertyState
 import net.corda.core.contracts.Command
 import net.corda.core.contracts.UniqueIdentifier
+import net.corda.core.contracts.requireThat
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
 import net.corda.core.node.services.queryBy
@@ -38,7 +39,10 @@ class SellPropertyFlowInitiator(
 
         val outputProperty = inputProperty.state.data.copy(owners = buyers)
 
-        val signers = outputProperty.participants.map { it.owningKey }
+        val inputState = inputProperty.state.data
+
+        val participants = (inputState.participants + outputProperty.participants).toSet()
+        val signers = participants.map { it.owningKey }
 
         val sellPropertyCommand = Command(
             PropertyContract.Commands.Sell(),
@@ -54,9 +58,8 @@ class SellPropertyFlowInitiator(
 
         val partiallySignedTransaction = serviceHub.signInitialTransaction(transactionBuilder)
 
-        val sellerSessions = (sellers - ourIdentity).map { initiateFlow(it) }
-        val buyerSessions = buyers.map { initiateFlow(it) }
-        val sessions = sellerSessions + buyerSessions
+        val sessions = (participants - ourIdentity).map { initiateFlow(it) }.toSet()
+
         val fullySignedTransaction = subFlow(CollectSignaturesFlow(
             partiallySignedTransaction, sessions
         ))
@@ -66,9 +69,14 @@ class SellPropertyFlowInitiator(
 }
 
 @InitiatedBy(SellPropertyFlowInitiator::class)
-class SellPropertyFlowResponder(val counterpartySession: FlowSession) : FlowLogic<Unit>() {
+class SellPropertyFlowResponder(val counterpartySession: FlowSession) : FlowLogic<SignedTransaction>() {
     @Suspendable
-    override fun call() {
+    override fun call(): SignedTransaction {
+        val signTransactionFlow = object : SignTransactionFlow(counterpartySession) {
+            override fun checkTransaction(stx: SignedTransaction) {}
+        }
+        val txId = subFlow(signTransactionFlow).id
 
+        return subFlow(ReceiveFinalityFlow(counterpartySession, expectedTxId = txId))
     }
 }
