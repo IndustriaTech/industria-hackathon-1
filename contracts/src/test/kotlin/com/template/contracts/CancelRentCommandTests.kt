@@ -8,7 +8,7 @@ import net.corda.testing.node.ledger
 import org.junit.Test
 import java.time.Instant
 
-class CancelCancelRentCommandTests {
+class CancelRentCommandTests {
     private val ledgerServices = MockServices(listOf("com.template"))
     private val firstOwner = TestIdentity(CordaX500Name("John Doe", "City", "BG"))
     private val firstTenant = TestIdentity(CordaX500Name("Jeremy", "City", "BG"))
