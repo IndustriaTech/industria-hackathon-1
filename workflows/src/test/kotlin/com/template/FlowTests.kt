@@ -1,6 +1,8 @@
 package com.template
 
+import com.template.flows.CancelRentPropertyFlowInitiator
 import com.template.flows.CreatePropertyFlowInitiator
+import com.template.flows.RentPropertyFlowInitiator
 import com.template.flows.SellPropertyFlowInitiator
 import com.template.states.PropertyState
 import net.corda.core.contracts.UniqueIdentifier
@@ -53,6 +55,36 @@ class FlowTests {
         return resultFuture.get().tx.outputsOfType<PropertyState>()
     }
 
+    private fun rentProperty(
+            tenants: List<Party>,
+            linearId: UniqueIdentifier
+    ): List<PropertyState> {
+        val flow = RentPropertyFlowInitiator(
+                tenants = tenants,
+                notaryToUse = network.defaultNotaryIdentity,
+                linearId = linearId
+        )
+
+        val resultFuture = nodeA.startFlow(flow)
+        network.runNetwork()
+        return resultFuture.get().tx.outputsOfType<PropertyState>()
+    }
+
+    private fun cancelRentProperty(
+            tenants: List<Party>,
+            linearId: UniqueIdentifier
+    ): List<PropertyState> {
+        val flow = RentPropertyFlowInitiator(
+                tenants = tenants,
+                notaryToUse = network.defaultNotaryIdentity,
+                linearId = linearId
+        )
+
+        val resultFuture = nodeA.startFlow(flow)
+        network.runNetwork()
+        return resultFuture.get().tx.outputsOfType<PropertyState>()
+    }
+
     @Before
     fun setup() = network.runNetwork()
 
@@ -85,6 +117,36 @@ class FlowTests {
             val state = propertyStatesAndRef.single().state.data
 
             assertEquals(state.owners, nodeB.info.legalIdentities)
+        }
+    }
+
+    @Test
+    fun `Test renting property`() {
+        val state = createProperty().single()
+        rentProperty(nodeB.info.legalIdentities, state.linearId)
+
+        nodeA.transaction {
+            val propertyStatesAndRef = nodeA.services.vaultService.queryBy<PropertyState>().states
+
+            assertEquals(1, propertyStatesAndRef.size)
+            val state = propertyStatesAndRef.single().state.data
+
+            assertEquals(state.tenants, nodeB.info.legalIdentities)
+        }
+    }
+
+    @Test
+    fun `Test cancel renting property`() {
+        val state = createProperty().single()
+        cancelRentProperty(nodeB.info.legalIdentities, state.linearId)
+
+        nodeA.transaction {
+            val propertyStatesAndRef = nodeA.services.vaultService.queryBy<PropertyState>().states
+
+            assertEquals(1, propertyStatesAndRef.size)
+            val state = propertyStatesAndRef.single().state.data
+
+            assertEquals(state.tenants, nodeB.info.legalIdentities)
         }
     }
 }

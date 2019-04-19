@@ -60,6 +60,7 @@ class PropertyContract : Contract {
                 val inputProperty = inputs.single()
                 val outputProperty = outputs.single()
 
+                "All the tenants from the input should be present in the output." using (outputProperty.tenants.containsAll(inputProperty.tenants))
                 "One or more tenants should be added." using (inputProperty.tenants.size < outputProperty.tenants.size)
                 "Only the tenants number should change." using (
 
@@ -75,10 +76,11 @@ class PropertyContract : Contract {
                 val outputProperty = outputs.single()
 
                 "One or more tenants should be deleted." using (inputProperty.tenants.size > outputProperty.tenants.size)
+                "All the tenants from the output should be present in the input." using (inputProperty.tenants.containsAll(outputProperty.tenants))
                 "Only the tenants number should change." using (
 
-                        outputProperty == inputProperty.copy(tenants = outputProperty.tenants)
-                        )
+                    outputProperty == inputProperty.copy(tenants = outputProperty.tenants)
+                )
             }
         }
     }

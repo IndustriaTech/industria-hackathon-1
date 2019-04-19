@@ -12,19 +12,22 @@ class RentCommandTests {
     private val ledgerServices = MockServices(listOf("com.template"))
     private val firstOwner = TestIdentity(CordaX500Name("John Doe", "City", "BG"))
     private val firstTenant = TestIdentity(CordaX500Name("Jeremy", "City", "BG"))
+    private val secondTenant = TestIdentity(CordaX500Name("George", "City", "BG"))
+    private val thirdTenant = TestIdentity(CordaX500Name("Jorge", "City", "BG"))
+
     private val owners = listOf(firstOwner.party)
     private val tenants = listOf(firstTenant.party)
 
     private val inputState = PropertyState(
         owners = owners,
-        tenants = emptyList(),
+        tenants = tenants,
         constructedAt = Instant.now(),
         area = 100,
         address = "Uzundjovska 7-9"
     )
 
     private val outputState = inputState.copy(
-        tenants = tenants
+        tenants = tenants + secondTenant.party
     )
 
     @Test
@@ -76,6 +79,19 @@ class RentCommandTests {
             }
         }
     }
+
+    @Test
+    fun `All the tenants from the input should be present in the output`() {
+        ledgerServices.ledger {
+            transaction {
+                command(firstOwner.publicKey, PropertyContract.Commands.Rent())
+                input(PropertyContract.ID, inputState)
+                output(PropertyContract.ID, outputState.copy(tenants = listOf(secondTenant.party, thirdTenant.party)))
+                failsWith("All the tenants from the input should be present in the output.")
+            }
+        }
+    }
+
 
     @Test
     fun `One or more tenant should be added`() {
