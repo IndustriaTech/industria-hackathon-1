@@ -31,6 +31,7 @@ class PropertyContract : Contract {
 
         when (command.value) {
             is Commands.Create -> requireThat {
+                // TODO: Validate unique addresses
                 "No PropertyState inputs should be consumed." using (inputs.isEmpty())
                 "One PropertyState output should be produced." using (outputs.size == 1)
 
