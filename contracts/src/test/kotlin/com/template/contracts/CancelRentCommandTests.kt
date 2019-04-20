@@ -12,8 +12,10 @@ class CancelRentCommandTests {
     private val ledgerServices = MockServices(listOf("com.template"))
     private val firstOwner = TestIdentity(CordaX500Name("John Doe", "City", "BG"))
     private val firstTenant = TestIdentity(CordaX500Name("Jeremy", "City", "BG"))
+    private val secondTenant = TestIdentity(CordaX500Name("George", "City", "BG"))
+    private val thirdTenant = TestIdentity(CordaX500Name("Jorge", "City", "BG"))
     private val owners = listOf(firstOwner.party)
-    private val tenants = listOf(firstTenant.party)
+    private val tenants = listOf(firstTenant.party, secondTenant.party)
 
     private val inputState = PropertyState(
             owners = owners,
@@ -24,7 +26,7 @@ class CancelRentCommandTests {
     )
 
     private val outputState = inputState.copy(
-            tenants = emptyList()
+            tenants = listOf(firstTenant.party)
     )
 
     @Test
@@ -85,6 +87,18 @@ class CancelRentCommandTests {
                 input(PropertyContract.ID, outputState)
                 output(PropertyContract.ID, inputState)
                 failsWith("One or more tenants should be deleted.")
+            }
+        }
+    }
+
+    @Test
+    fun `All the tenants from the output should be present in the input`() {
+        ledgerServices.ledger {
+            transaction {
+                command(firstOwner.publicKey, PropertyContract.Commands.CancelRent())
+                input(PropertyContract.ID, inputState)
+                output(PropertyContract.ID, outputState.copy(tenants = listOf(thirdTenant.party)))
+                failsWith("All the tenants from the output should be present in the input.")
             }
         }
     }

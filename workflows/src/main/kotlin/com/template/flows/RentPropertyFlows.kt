@@ -18,38 +18,41 @@ import net.corda.core.utilities.ProgressTracker
 // *********
 @InitiatingFlow
 @StartableByRPC
-class SellPropertyFlowInitiator(
-    private val buyers: List<Party>,
-    private val notaryToUse: Party,
-    private val linearId : UniqueIdentifier
+class RentPropertyFlowInitiator(
+        private val tenants: List<Party>,
+        private val notaryToUse: Party,
+        private val linearId : UniqueIdentifier
 ) : FlowLogic<SignedTransaction>() {
     override val progressTracker = ProgressTracker()
 
     @Suspendable
     override fun call(): SignedTransaction {
         val queryCriteria = QueryCriteria.LinearStateQueryCriteria(
-            linearId = listOf(linearId))
+                linearId = listOf(linearId))
 
         val results = serviceHub.vaultService.queryBy<PropertyState>(queryCriteria)
         val inputProperty = results.states.singleOrNull()
-                            ?: throw FlowException("No such state")
-
-        val outputProperty = inputProperty.state.data.copy(owners = buyers)
+                ?: throw FlowException("No such state")
 
         val inputState = inputProperty.state.data
 
-        val participants = (inputState.participants + outputProperty.participants).toSet()
+        val newTenants = inputState.tenants + tenants
+
+        val outputState = inputState.copy(tenants = newTenants)
+
+
+        val participants = (inputState.participants + outputState.participants).toSet()
         val signers = participants.map { it.owningKey }
 
-        val sellPropertyCommand = Command(
-            PropertyContract.Commands.Sell(),
-            signers
+        val rentPropertyCommand = Command(
+                PropertyContract.Commands.Rent(),
+                signers
         )
 
         val transactionBuilder = TransactionBuilder(notaryToUse)
-            .addInputState(inputProperty)
-            .addOutputState(outputProperty, PropertyContract.ID)
-            .addCommand(sellPropertyCommand)
+                .addInputState(inputProperty)
+                .addOutputState(outputState, PropertyContract.ID)
+                .addCommand(rentPropertyCommand)
 
         transactionBuilder.verify(serviceHub)
 
@@ -58,15 +61,15 @@ class SellPropertyFlowInitiator(
         val sessions = (participants - ourIdentity).map { initiateFlow(it) }.toSet()
 
         val fullySignedTransaction = subFlow(CollectSignaturesFlow(
-            partiallySignedTransaction, sessions
+                partiallySignedTransaction, sessions
         ))
         return subFlow(FinalityFlow(fullySignedTransaction, sessions))
 
     }
 }
 
-@InitiatedBy(SellPropertyFlowInitiator::class)
-class SellPropertyFlowResponder(val counterpartySession: FlowSession) : FlowLogic<SignedTransaction>() {
+@InitiatedBy(RentPropertyFlowInitiator::class)
+class RentPropertyFlowResponder(val counterpartySession: FlowSession) : FlowLogic<SignedTransaction>() {
     @Suspendable
     override fun call(): SignedTransaction {
         val signTransactionFlow = object : SignTransactionFlow(counterpartySession) {
